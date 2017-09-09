@@ -11,24 +11,25 @@ defmodule AsyncWith do
     new_with = Enum.concat([blocking_futures, last_line])
     result_var = Macro.var(:"result", __MODULE__)
 
-    res = quote do
+    quote do
       unquote_splicing(start_futures)
       unquote(result_var) = with unquote_splicing(new_with)
       unquote_splicing(clean_futures(with_matches))
       unquote(result_var)
     end
-    res |> Macro.to_string |> IO.puts
-    res
   end
 
-  def to_future({{op, _meta, body}, idx} = line, with_matches) when op in [:<-, :=] do
+  def to_future({_, idx} = line, with_matches)  do
     dependencies = generate_dependency_withs_for(with_matches, line)
-    right_side = List.last(body)
+    future_body = case line do
+      {{op,_,[_,right]}, _} when op in [:<-, :=] -> right
+      {body, _} -> body
+    end
 
     quote do
       unquote(future_var(idx)) = Future.new(fn() ->
           with unquote_splicing(dependencies) do
-            unquote(right_side)
+            unquote(future_body)
           end
       end)
     end
@@ -71,6 +72,10 @@ defmodule AsyncWith do
   def var_assignments({op, _, [left, _]}) when op in [:<-, :=] do
     extract_vars(left)
   end
+  def var_assignments(_) do
+    MapSet.new()
+  end
+
 
   def var_requirements({:<-, _, [_, right]}) do
     extract_vars(right)
@@ -89,6 +94,9 @@ defmodule AsyncWith do
 
   def assign_to_future_value({{op, meta, [left, _]}, _idx} = line) when op in [:<-, :=] do
     {op, meta, [left, future_value_for(line)]}
+  end
+  def assign_to_future_value(line) do
+    future_value_for(line)
   end
 
   def future_value_for({_, idx}) do

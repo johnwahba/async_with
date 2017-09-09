@@ -33,6 +33,7 @@ defmodule AsyncWithTest do
     assert {1, 2, 3, 1} == async(with x when is_integer(x) <- 1,
       a <- x + 1,
       b <- a + 1,
+      "irrelevant string",
       r = 1 do
         {x, a, b, r}
       else
