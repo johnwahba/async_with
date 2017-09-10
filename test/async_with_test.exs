@@ -62,4 +62,19 @@ defmodule AsyncWithTest do
     :timer.sleep(1) # Wait for processes to die
     assert length(Process.list) == process_count_before
   end
+
+
+  test "raised errors don't leak" do
+    process_count_before = length(Process.list)
+    assert_raise RuntimeError, "hell", fn() ->
+      async(with a when is_atom(a) <- :a do
+        raise "hell"
+        {a, a}
+      else
+        result -> {:error, result}
+      end)
+    end
+    :timer.sleep(1) # Wait for processes to die
+    assert length(Process.list) == process_count_before
+  end
 end

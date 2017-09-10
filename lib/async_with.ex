@@ -13,8 +13,11 @@ defmodule AsyncWith do
 
     quote do
       unquote_splicing(start_futures)
-      unquote(result_var) = with unquote_splicing(new_with)
-      unquote_splicing(clean_futures(with_matches))
+      unquote(result_var) = try do
+        with unquote_splicing(new_with)
+      after
+        unquote_splicing(clean_futures(with_matches))
+      end
       unquote(result_var)
     end
   end
